@@ -1,10 +1,7 @@
 client_name,contract_start,contract_end,renewal_date,monthly_fee,status
 "Bright Wave Media","2025-01-01","2026-12-31","2026-09-18",4800,"active"
-"BRIGHTWAVE MEDIA LLC","2026-03-01","2027-01-31","2026-09-28",5400,"active"
 "Northstar Labs Inc","2025-05-01","2026-09-30","2026-08-15",4200,"active"
-"NORTH STAR LABS, INC.","2026-06-15","2027-02-15","2026-11-22",4600,"active"
 "Harbor & Pine Studio","2025-08-01","2026-10-31","2026-10-02",3900,"active"
-"HARBOUR AND PINE STUDIO LTD","2026-02-01","2026-09-30","2026-08-02",4300,"active"
 "Ashcroft Retail Group","2025-10-01","2026-08-15","2026-07-12",5200,"active"
 "Ashcroft Retail Group","2026-03-15","2027-01-31","2026-11-20",5700,"renewed"
 "Crestline Health Co","2025-11-01","","2026-09-25",6100,"active"
@@ -13,3 +10,4 @@ client_name,contract_start,contract_end,renewal_date,monthly_fee,status
 "Summit Public Works","2025-04-01","2026-09-30","2026-08-08",4700,"active"
 "Pelican Point Maritime","2025-03-01","2026-10-31","2026-09-12",3500,"active"
 "Larkspur Logistics","2026-02-01","2027-02-28","2027-03-03",2900,"active"
+"Beacon Street Ventures","2025-09-01","2027-01-31","2026-11-15",4100,"active"
