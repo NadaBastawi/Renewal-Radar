@@ -70,6 +70,24 @@ describe('matching logic against sample CSV data', () => {
     expect(result.unmatchedProjects.every((row) => row.reviewRequired)).toBe(true);
   });
 
+  it('surfaces billing-only rows with no project export match for review', () => {
+    const billingRows = loadSampleCsv('billing-export.csv');
+    const projectRows = loadSampleCsv('project-export.csv');
+    const result = reconcileClientExports({
+      billingRows,
+      projectRows,
+      referenceDate: new Date('2026-08-28'),
+    });
+
+    const orphanNames = ['Marlow Advisory', 'Larkspur Logistics', 'Beacon Street Ventures'];
+
+    orphanNames.forEach((name) => {
+      expect(result.orphanBillingRows.some((row) => row.client_name === name)).toBe(true);
+    });
+
+    expect(result.orphanBillingRows.every((row) => row.reviewRequired === true)).toBe(true);
+  });
+
   it('separates due-soon, not-yet-due, and lapsed rows in the 45-day window', () => {
     expect(getRenewalWindowState('2026-08-15', new Date('2026-08-28'))).toBe('lapsed');
     expect(getRenewalWindowState('2026-09-18', new Date('2026-08-28'))).toBe('due_soon');
