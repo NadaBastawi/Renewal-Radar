@@ -1,8 +1,11 @@
+// @vitest-environment node
+
 import fs from 'node:fs';
 import path from 'node:path';
 import Papa from 'papaparse';
 import { describe, it, expect } from 'vitest';
 import { resolveDuplicateBillingRows, reconcileClientExports, getRenewalWindowState } from '../lib/matching.js';
+import { POST } from '../app/api/reconcile/route.js';
 
 function loadSampleCsv(filename) {
   const fullPath = path.join(process.cwd(), 'sample-data', filename);
@@ -93,5 +96,55 @@ describe('matching logic against sample CSV data', () => {
     expect(getRenewalWindowState('2026-09-18', new Date('2026-08-28'))).toBe('due_soon');
     expect(getRenewalWindowState('2027-03-03', new Date('2026-08-28'))).toBe('not_yet_due');
     expect(getRenewalWindowState('', new Date('2026-08-28'))).toBe('needs_review');
+  });
+
+  it('splits the review summary into date-missing, billing-only, and unmatched project groups', () => {
+    const billingRows = loadSampleCsv('billing-export.csv');
+    const projectRows = loadSampleCsv('project-export.csv');
+    const result = reconcileClientExports({
+      billingRows,
+      projectRows,
+      referenceDate: new Date('2026-08-28'),
+    });
+
+    expect(result.summary.matched).toBe(8);
+    expect(result.summary.needsReview).toBe(6);
+    expect(result.summary.billingOnly).toBe(3);
+    expect(result.summary.unmatchedProjects).toBe(5);
+    expect(result.matchedRows.filter((row) => row.matchStatus === 'missing_renewal_date')).toHaveLength(1);
+  });
+
+  it('accepts valid uploaded File objects and rejects invalid non-CSV uploads cleanly', async () => {
+    const billingCsv = fs.readFileSync(path.join(process.cwd(), 'sample-data', 'billing-export.csv'), 'utf8');
+    const projectCsv = fs.readFileSync(path.join(process.cwd(), 'sample-data', 'project-export.csv'), 'utf8');
+
+    const validRequest = new Request('http://localhost/api/reconcile', {
+      method: 'POST',
+      body: (() => {
+        const formData = new FormData();
+        formData.append('billingCsv', new File([billingCsv], 'billing-export.csv', { type: 'text/csv' }));
+        formData.append('projectCsv', new File([projectCsv], 'project-export.csv', { type: 'text/csv' }));
+        return formData;
+      })(),
+    });
+
+    const validResponse = await POST(validRequest);
+    expect(validResponse.status).toBe(200);
+
+    const invalidRequest = new Request('http://localhost/api/reconcile', {
+      method: 'POST',
+      body: (() => {
+        const formData = new FormData();
+        formData.append('billingCsv', new File([billingCsv], 'billing-export.csv', { type: 'text/csv' }));
+        formData.append('projectCsv', new File(['This is not a CSV'], 'bad.txt', { type: 'text/plain' }));
+        return formData;
+      })(),
+    });
+
+    const invalidResponse = await POST(invalidRequest);
+    const invalidPayload = await invalidResponse.json();
+
+    expect(invalidResponse.status).toBe(400);
+    expect(invalidPayload.error).toBe('The Project CSV file could not be read — please check the file format and required columns.');
   });
 });

@@ -24,11 +24,12 @@ function clusterRows(data) {
     dueSoon: matchedRows.filter((row) => row.renewalWindow === 'due_soon'),
     lapsed: matchedRows.filter((row) => row.renewalWindow === 'lapsed'),
     notYetDue: matchedRows.filter((row) => row.renewalWindow === 'not_yet_due'),
-    review: [
-      ...matchedRows.filter((row) => row.reviewRequired),
-      ...orphanBillingRows,
+    needsReview: [
+      ...matchedRows.filter((row) => row.matchStatus === 'missing_renewal_date'),
       ...unmatchedProjects,
     ],
+    billingOnly: orphanBillingRows,
+    unmatchedProjects,
   };
 }
 
@@ -48,6 +49,12 @@ export default function Home() {
   const fetchReconciliation = async (body) => {
     setLoading(true);
     setError('');
+    setResult({
+      matchedRows: [],
+      orphanBillingRows: [],
+      unmatchedProjects: [],
+      summary: defaultSummary,
+    });
 
     try {
       const response = await fetch('/api/reconcile', {
@@ -57,7 +64,7 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        const payload = await response.json();
+        const payload = await response.json().catch(() => ({}));
         throw new Error(payload.error || 'Unable to reconcile exports.');
       }
 
@@ -65,6 +72,12 @@ export default function Home() {
       setResult(data);
     } catch (loadError) {
       setError(loadError.message || 'Unable to load reconciliation results.');
+      setResult({
+        matchedRows: [],
+        orphanBillingRows: [],
+        unmatchedProjects: [],
+        summary: defaultSummary,
+      });
     } finally {
       setLoading(false);
     }
@@ -89,8 +102,18 @@ export default function Home() {
     },
     {
       label: 'Needs review',
-      value: grouped.review.length,
+      value: grouped.needsReview.length,
       accent: 'amber',
+    },
+    {
+      label: 'Billing-only',
+      value: grouped.billingOnly.length,
+      accent: 'slate',
+    },
+    {
+      label: 'Unmatched projects',
+      value: grouped.unmatchedProjects.length,
+      accent: 'violet',
     },
   ];
 
@@ -103,12 +126,21 @@ export default function Home() {
 
     if (!billingInput || !projectInput) {
       setError('Please upload both billing and project CSV exports.');
+      setResult({
+        matchedRows: [],
+        orphanBillingRows: [],
+        unmatchedProjects: [],
+        summary: defaultSummary,
+      });
       return;
     }
 
+    const billingName = billingInput.name || '';
+    const projectName = projectInput.name || '';
+
     setSource('uploaded');
-    setBillingFileName(billingInput.name || 'billing-export.csv');
-    setProjectFileName(projectInput.name || 'project-export.csv');
+    setBillingFileName(billingName || 'billing-export.csv');
+    setProjectFileName(projectName || 'project-export.csv');
     await fetchReconciliation(formData);
   };
 
@@ -211,7 +243,11 @@ export default function Home() {
             {renderTable('Not yet due', grouped.notYetDue, 'Nothing due after the 45-day window.')}
           </div>
 
-          {renderTable('Needs review', grouped.review, 'No accounts require review.')}
+          <div className="columns review-columns">
+            {renderTable('Needs review', grouped.needsReview, 'No missing renewal dates require follow-up.')}
+            {renderTable('Billing-only records', grouped.billingOnly, 'No billing-only records are waiting on project data.')}
+            {renderTable('Unmatched projects', grouped.unmatchedProjects, 'No project rows are missing a client match.')}
+          </div>
         </>
       ) : null}
     </main>
