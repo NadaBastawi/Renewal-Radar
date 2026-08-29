@@ -1,9 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import Papa from 'papaparse';
-import matching from '../../../lib/matching.js';
-
-const { reconcileClientExports } = matching;
+import { reconcileClientExports } from '../../../lib/matching.js';
 
 function parseCsvText(csvText) {
   if (!csvText || !String(csvText).trim()) {
